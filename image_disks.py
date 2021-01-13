@@ -33,7 +33,7 @@ def image_policy_disk_excludes(policy_name):
 
 # testing
 
-import subprocess, sys
+import subprocess, sys, datetime, openpyxl, shutil
 
 policies = subprocess.check_output(r"/usr/openv/netbackup/bin/admincmd/bppllist", shell=True).decode().split("\n")
 errors = []
