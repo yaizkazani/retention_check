@@ -2,30 +2,10 @@
 
 import subprocess, os, sys, platform, re
 
-retentions = {"2y": "12",
-              "5y": "13",
-              "10y": "16",
-              "30m": "17",
-              "8m": "4",
-              "6w": "10",
-              "2w": "1"}
-
-policy_types = {
-    "13": "MS-Windows",
-    "0": "Standard",
-    "15": "MS-SQL",
-    "16": "Exchange",
-    "40": "VMware",
-    "4": "Oracle",
-    "29": "Flashbackup",
-    "30": "Vault",
-    "25": "LotusNotes"
-}
-
-temp = dict()
-
-for key in policy_types.keys():
-    temp.setdefault(policy_types[key], key)
+# temp = dict()
+#
+# for key in policy_types.keys():
+#     temp.setdefault(policy_types[key], key)
 
 # allSLPs = subprocess.check_output(rf"/usr/openv/netbackup/bin/admincmd/nbstl -L", shell=True, stderr=subprocess.DEVNULL).decode()
 #
@@ -47,10 +27,12 @@ for key in policy_types.keys():
 policies_to_check = []
 
 
-def iterate_dict(string, dict):
-    for key in dict.keys():
-        if key in string.lower():
-            return dict[key]
+#
+#
+# def iterate_dict(string, dict):
+#     for key in dict.keys():
+#         if key in string.lower():
+#             return dict[key]
 
 
 def check_policy_schedules(policy_type, policy_name, schedule_name, schedule_code):
@@ -64,19 +46,20 @@ def check_policy_schedules(policy_type, policy_name, schedule_name, schedule_cod
     """
     if not any(name in schedule_name for name in ["Full", "Cum", "Dif", "log", "App"]):
         print(rf"Check {schedule_name} of {policy_name}. Wrong schedule name")
-    if policy_type == "40":                                                                         # VMWare
+    if policy_type == "40":  # VMWare
         if "Full" in schedule_name and schedule_code != "0":
             return False
         elif "Dif" in schedule_name and schedule_code != "1":
             return False
-    if any(policy_type == i for i in ["13", "16", "29", "25", "0", "4"]):            #MS-Windows & Exchange & Flashbackup & LotusNotes & Oracle & Standard
+    if any(policy_type == i for i in
+           ["13", "16", "29", "25", "0", "4"]):  # MS-Windows & Exchange & Flashbackup & LotusNotes & Oracle & Standard
         if "Full" in schedule_name and schedule_code != "0":
             return False
         elif "Cum" in schedule_name and schedule_code != "4":
             return False
         elif "Dif" in schedule_name and schedule_code != "1":
             return False
-    if policy_type == "15" and "intel" in policy_name:                                              # MSSQL Intelligent
+    if policy_type == "15" and "intel" in policy_name:  # MSSQL Intelligent
         if "Full" in schedule_name and schedule_code != "0":
             return False
         elif "Dif" in schedule_name and schedule_code != "1":
@@ -93,6 +76,28 @@ def check_policy_retention(policy_info):
     :param policy_info: policy information from bppllist output
     :return:
     """
+    retentions = \
+        {
+        "2y": "12",
+        "5y": "13",
+        "10y": "16",
+        "30m": "17",
+        "8m": "4",
+        "6w": "10",
+        "2w": "1"
+        }
+    # policy_types = \
+    #     {
+    #     "13": "MS-Windows",
+    #     "0": "Standard",
+    #     "15": "MS-SQL",
+    #     "16": "Exchange",
+    #     "40": "VMware",
+    #     "4": "Oracle",
+    #     "29": "Flashbackup",
+    #     "30": "Vault",
+    #     "25": "LotusNotes"
+    #     }
     policy_name = ""
     policy_type = ""
     policy_default_slp = ""
@@ -105,7 +110,7 @@ def check_policy_retention(policy_info):
             policy_type = line.split()[1]
             print(policy_type)
         if re.match("^RES", line):
-            policy_default_slp = iterate_dict(line, retentions)
+            policy_default_slp = "".join([retentions[key] for key in retentions.keys() if key in line.lower()])
             print(policy_default_slp)
         if re.match("^SCHED\\s", line):
             current_schedule = line.split()[1]
@@ -114,11 +119,13 @@ def check_policy_retention(policy_info):
                 print(rf"Check {current_schedule} of {policy_name}")
             print(current_schedule)
         if re.match("^SCHEDRES\\s", line):
-            current_schedule_retention_from_name = iterate_dict(current_schedule, retentions)
+            current_schedule_retention_from_name = "".join(
+                [retentions[key] for key in retentions.keys() if key in current_schedule.lower()])
             if "NULL" not in line.split()[1]:
-                current_schedule_retention = iterate_dict(line, retentions)
+                current_schedule_retention = "".join(
+                    [retentions[key] for key in retentions.keys() if key in line.lower()])
                 if current_schedule_retention != current_schedule_retention_from_name:
-                    policies_to_check.append(policy_name)
+                    policies_to_check.append(f"{policy_name} retention check failed")
             else:
                 if policy_default_slp != current_schedule_retention_from_name and "App" not in current_schedule:
                     print(rf"Check {current_schedule} of {policy_name}. Wrong schedule name.")
