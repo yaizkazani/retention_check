@@ -46,61 +46,70 @@ for key in policy_types.keys():
 
 policies_to_check = []
 
+
 def iterate_dict(string, dict):
     for key in dict.keys():
         if key in string.lower():
-            return dict.get(key)
+            return dict[key]
 
-def iterate_types(string, dict):
-    for key in dict.keys():
-        if string.lower() in key:
-            return dict.get(key)
 
 def check_policy_schedules(policy_type, policy_name, schedule_name, schedule_code):
-    if "40" in policy_type:                                                         #VMWare
+    """
+    Checks if policy schedule name corresponds to it's exact purpose.
+    :param policy_type: policy type code represented in policy_types dict
+    :param policy_name:
+    :param schedule_name:
+    :param schedule_code: schedule code from bppllist output
+    :return:
+    """
+    if not any(name in schedule_name for name in ["Full", "Cum", "Dif", "log", "App"]):
+        print(rf"Check {schedule_name} of {policy_name}. Wrong schedule name")
+    if policy_type == "40":                                                                         # VMWare
         if "Full" in schedule_name and schedule_code != "0":
             return False
-        if "Dif" in schedule_name and schedule_code != "1":
+        elif "Dif" in schedule_name and schedule_code != "1":
             return False
-    if "13" in policy_type \
-            or policy_type in "0" \
-            or "16" in policy_type \
-            or policy_type in "4" \
-            or "29" in policy_type \
-            or "25" in policy_type:                                                  #MS-Windows & Standard  & Exchange & Oracle & Flashbackup & Lotus
+    if any(policy_type == i for i in ["13", "16", "29", "25", "0", "4"]):            #MS-Windows & Exchange & Flashbackup & LotusNotes & Oracle & Standard
         if "Full" in schedule_name and schedule_code != "0":
             return False
-        if "Cum" in schedule_name and schedule_code != "4":
+        elif "Cum" in schedule_name and schedule_code != "4":
             return False
-        if "Dif" in schedule_name and schedule_code != "1":
+        elif "Dif" in schedule_name and schedule_code != "1":
             return False
-    if "15" in policy_type and "intel" in policy_name:                              #MSSQL Intelligent
+    if policy_type == "15" and "intel" in policy_name:                                              # MSSQL Intelligent
         if "Full" in schedule_name and schedule_code != "0":
             return False
-        if "Dif" in schedule_name and schedule_code != "1":
+        elif "Dif" in schedule_name and schedule_code != "1":
             return False
-        if "log" in schedule_name and schedule_code != "5":
+        elif "log" in schedule_name and schedule_code != "5":
             return False
 
     return True
 
 
-def check_policy_retention(policy_name):
-    policy_info = subprocess.check_output(rf"/usr/openv/netbackup/bin/admincmd/bppllist {policy_name}", shell=True, stderr=subprocess.DEVNULL).decode()
+def check_policy_retention(policy_info):
+    """
+    Checks if policy schedule names corresponds it's exact retention.
+    :param policy_info: policy information from bppllist output
+    :return:
+    """
+    policy_name = ""
     policy_type = ""
     policy_default_slp = ""
     current_schedule = ""
     current_schedule_code = ""
     for line in policy_info.splitlines():
+        if re.match("^CLASS", line):
+            policy_name = line.split()[1]
         if re.match("^INFO", line):
-            policy_type = line.split(" ")[1]
+            policy_type = line.split()[1]
             print(policy_type)
         if re.match("^RES", line):
-           policy_default_slp = iterate_dict(line, retentions)
-           print(policy_default_slp)
+            policy_default_slp = iterate_dict(line, retentions)
+            print(policy_default_slp)
         if re.match("^SCHED\\s", line):
-            current_schedule = line.split(" ")[1]
-            current_schedule_code = line.split(" ")[2]
+            current_schedule = line.split()[1]
+            current_schedule_code = line.split()[2]
             if not check_policy_schedules(policy_type, policy_name, current_schedule, current_schedule_code):
                 print(rf"Check {current_schedule} of {policy_name}")
             print(current_schedule)
@@ -111,14 +120,13 @@ def check_policy_retention(policy_name):
                 if current_schedule_retention != current_schedule_retention_from_name:
                     policies_to_check.append(policy_name)
             else:
-                if policy_default_slp != current_schedule_retention_from_name:
-                    print(rf"Check {current_schedule} of {policy_name}. Wrong schedule name")
-
+                if policy_default_slp != current_schedule_retention_from_name and "App" not in current_schedule:
+                    print(rf"Check {current_schedule} of {policy_name}. Wrong schedule name.")
 
 
 # check_policy_retention("ccdk_bal_image")
 # check_policy_retention("ccdk-fil-1")
 # check_policy_retention("ccdk-sql-time")
-check_policy_retention("ccdk-sql-intelligent-cold")
+check_policy_retention(subprocess.check_output(rf"/usr/openv/netbackup/bin/admincmd/bppllist ccdk-ora-day", shell=True,
+                                               stderr=subprocess.DEVNULL).decode())
 print(policies_to_check)
-
