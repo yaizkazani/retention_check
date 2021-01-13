@@ -35,6 +35,27 @@ def image_policy_disk_excludes(policy_name):
 
 import subprocess, sys, datetime, openpyxl, shutil
 
+master_servers = ["dk-prod-nbumas04.prod.fujitsu.dk", "dk-prod-nbumas01.prod.fujitsu.dk", "dk-prod-nbumasprisme.prod.fujitsu.dk"]
+policy_names_dict = dict()
+
+for server in master_servers:
+    policies = subprocess.check_output(rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist", shell=True).decode().split("\n")
+    policy_names_dict[server] = policies
+    for policy in policy_names_dict[server]:
+        policy_data = subprocess.check_output(rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist {policy}", shell=True).decode()
+        policy_name =
+
+
+
+
+
+
+
+
+
+
+
+
 policies = subprocess.check_output(r"/usr/openv/netbackup/bin/admincmd/bppllist", shell=True).decode().split("\n")
 errors = []
 success = []
