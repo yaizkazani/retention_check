@@ -16,8 +16,10 @@ def image_policy_disk_excludes(data):
 
     if platform.system() != "Linux":
         sys.exit(f"OS was detected as {platform.system()}, should be 'Linux'")
-
-    policy_name = re.findall(r"^CLASS\s([a-zA-Z0-9-_]*)\s", data)[0]
+    try:
+        policy_name = re.findall(r"^CLASS\s([a-zA-Z0-9-_.]*)\s", data)[0]
+    except:
+        print(data)
     if "image" in policy_name or "image" in policy_name and "sql" in policy_name:
 
         #debug
@@ -107,17 +109,17 @@ def check_policy_retention(policy_info):
             policy_name = line.split()[1]
         if re.match("^INFO", line):
             policy_type = line.split()[1]
-            print(policy_type)
+            # print(policy_type)
         if re.match("^RES", line):
             policy_default_slp = "".join([retentions[key] for key in retentions.keys() if key in line.lower()])
-            print(policy_default_slp)
+            # print(policy_default_slp)
         if re.match("^SCHED\\s", line):
             current_schedule = line.split()[1]
             current_schedule_code = line.split()[2]
             if not check_policy_schedules(policy_type, policy_name, current_schedule, current_schedule_code):
 #                print(rf"Check {current_schedule} of {policy_name}")
                 return (False, f"schedule: {current_schedule} policy: {policy_name}", "Schedule check failed")
-            print(current_schedule)
+            # print(current_schedule)
         if re.match("^SCHEDRES\\s", line):
             current_schedule_retention_from_name = "".join(
                 [retentions[key] for key in retentions.keys() if key in current_schedule.lower()])
@@ -138,21 +140,28 @@ import subprocess, sys, datetime, shutil, re
 # import openpyxl
 
 master_servers = ["dk-prod-nbumas04.prod.fujitsu.dk", "dk-prod-nbumas01.prod.fujitsu.dk", "dk-prod-nbumasprisme.prod.fujitsu.dk"]
-policy_names_dict = dict()
 
 errors = dict()
 
 for server in master_servers:
+    policy_names_dict = dict()
     policies = subprocess.check_output(rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist", shell=True).decode().split("\n")
     policy_names_dict[server] = policies
+    print(policy_names_dict)
     for policy in policy_names_dict[server]:
+        print(policy)
+        # if policy == "":
+        #     continue
         try:
             policy_data = subprocess.check_output(rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist {policy}", shell=True).decode()
         except Exception as e:
             print(f"{policy} does not exist in the configuration database (230)") if "230" in str(e) else sys.exit(f" error is {e}")
             continue
-        policy_name = re.findall(r"^CLASS\s([a-zA-Z0-9-_]*)\s", policy_data)[0]
-        result = [image_policy_disk_excludes(policy_data), check_policy_retention(policy_data)]
+        try:
+            policy_name = re.findall(r"^CLASS\s([a-zA-Z0-9-_.]*)\s", policy_data)[0]
+            result = [image_policy_disk_excludes(policy_data), check_policy_retention(policy_data)]
+        except:
+            print("")
         if policy_name in policy_names_dict.values():
             print(f"WARNING, DUPLICATE POLICY NAME FOUND: {policy_name} CONSIDER RENAMING ONE OF THE POLICIES WITH THE SAME NAME")
         if not all(result):
