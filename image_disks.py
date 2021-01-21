@@ -22,7 +22,7 @@ def image_policy_disk_excludes(data):
         print(data)
     if "image" in policy_name or "image" in policy_name and "sql" in policy_name:
 
-        #debug
+        # debug
         # print(f"policy name {policy_name} \n sql in policy name: {'sql' in policy_name} \n image in policy name {'image' in policy_name}")
         # print(f"'SSMARG drive_selection 2' in data: {'SSMARG drive_selection 2' in data}")
         # print(f"'SSMARG drive_selection 0' in data: {'SSMARG drive_selection 0' in data}")
@@ -30,7 +30,9 @@ def image_policy_disk_excludes(data):
         if "image" in policy_name and not "sql" in policy_name and "SSMARG drive_selection 0" in data:  # checking image policy
             return True, policy_name, "OK"
 
-        return (True, policy_name, "OK") if "image" in policy_name and "sql" in policy_name and "SSMARG drive_selection 2" in data else (False, policy_name, "Image backup disk exclusion check failed")  # checking SQL policy
+        return (True, policy_name,
+                "OK") if "image" in policy_name and "sql" in policy_name and "SSMARG drive_selection 2" in data else (
+        False, policy_name, "Image backup disk exclusion check failed")  # checking SQL policy
 
     else:
         return True, policy_name, "OK"
@@ -79,13 +81,13 @@ def check_policy_retention(policy_info):
     """
     retentions = \
         {
-        "2y": "12",
-        "5y": "13",
-        "10y": "16",
-        "30m": "17",
-        "8m": "4",
-        "6w": "10",
-        "2w": "1"
+            "2y": "12",
+            "5y": "13",
+            "10y": "16",
+            "30m": "17",
+            "8m": "4",
+            "6w": "10",
+            "2w": "1"
         }
     # policy_types = \
     #     {
@@ -117,7 +119,7 @@ def check_policy_retention(policy_info):
             current_schedule = line.split()[1]
             current_schedule_code = line.split()[2]
             if not check_policy_schedules(policy_type, policy_name, current_schedule, current_schedule_code):
-#                print(rf"Check {current_schedule} of {policy_name}")
+                #                print(rf"Check {current_schedule} of {policy_name}")
                 return (False, f"schedule: {current_schedule} policy: {policy_name}", "Schedule check failed")
             # print(current_schedule)
         if re.match("^SCHEDRES\\s", line):
@@ -127,25 +129,30 @@ def check_policy_retention(policy_info):
                 current_schedule_retention = "".join(
                     [retentions[key] for key in retentions.keys() if key in line.lower()])
                 if current_schedule_retention != current_schedule_retention_from_name:
-#                    policies_to_check.append(f"{policy_name} retention check failed")
+                    #                    policies_to_check.append(f"{policy_name} retention check failed")
                     return (False, f"schedule: {current_schedule} policy: {policy_name}", "Retention check failed")
             else:
                 if policy_default_slp != current_schedule_retention_from_name and "App" not in current_schedule:
-#                     print(rf"Check {current_schedule} of {policy_name}. Wrong schedule name.")
+                    #                     print(rf"Check {current_schedule} of {policy_name}. Wrong schedule name.")
                     return (False, f"schedule: {current_schedule} policy: {policy_name}", "Schedule name check failed")
     return (True, policy_name, "OK")
+
+
 # testing
 
 import subprocess, sys, datetime, shutil, re
+
 # import openpyxl
 
-master_servers = ["dk-prod-nbumas04.prod.fujitsu.dk", "dk-prod-nbumas01.prod.fujitsu.dk", "dk-prod-nbumasprisme.prod.fujitsu.dk"]
+master_servers = ["dk-prod-nbumas04.prod.fujitsu.dk", "dk-prod-nbumas01.prod.fujitsu.dk",
+                  "dk-prod-nbumasprisme.prod.fujitsu.dk"]
 
 errors = dict()
 
 for server in master_servers:
     policy_names_dict = dict()
-    policies = subprocess.check_output(rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist", shell=True).decode().split("\n")
+    policies = subprocess.check_output(rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist",
+                                       shell=True).decode().split("\n")
     policy_names_dict[server] = policies
     print(policy_names_dict)
     for policy in policy_names_dict[server]:
@@ -153,9 +160,11 @@ for server in master_servers:
         # if policy == "":
         #     continue
         try:
-            policy_data = subprocess.check_output(rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist {policy}", shell=True).decode()
+            policy_data = subprocess.check_output(
+                rf"/usr/bin/ssh root@{server} /usr/openv/netbackup/bin/admincmd/bppllist {policy}", shell=True).decode()
         except Exception as e:
-            print(f"{policy} does not exist in the configuration database (230)") if "230" in str(e) else sys.exit(f" error is {e}")
+            print(f"{policy} does not exist in the configuration database (230)") if "230" in str(e) else sys.exit(
+                f" error is {e}")
             continue
         try:
             policy_name = re.findall(r"^CLASS\s([a-zA-Z0-9-_.]*)\s", policy_data)[0]
@@ -163,10 +172,10 @@ for server in master_servers:
         except:
             print("")
         if policy_name in policy_names_dict.values():
-            print(f"WARNING, DUPLICATE POLICY NAME FOUND: {policy_name} CONSIDER RENAMING ONE OF THE POLICIES WITH THE SAME NAME")
+            print(
+                f"WARNING, DUPLICATE POLICY NAME FOUND: {policy_name} CONSIDER RENAMING ONE OF THE POLICIES WITH THE SAME NAME")
         if not all(result):
             errors.setdefault(policy_name, [r for r in result if not r[0]])
-
 
 # policies = subprocess.check_output(r"/usr/openv/netbackup/bin/admincmd/bppllist", shell=True).decode().split("\n")
 
